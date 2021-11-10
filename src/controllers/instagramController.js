@@ -1,6 +1,5 @@
 const http = require('http');
 const https = require('https');
-var request = require('request');
 
 exports.get = async (req, resp, next) => {
 
@@ -23,16 +22,17 @@ exports.get = async (req, resp, next) => {
         res.setEncoding('utf8');
         let usersActiveAccount = [];
         res.on('data', d => usersActiveAccount = JSON.parse(d));
-        res.on('end', () => {
+        res.on('end', async () => {
             // console.log(usersActiveAccount.reverse());
-            dataImages = getPhotos(usersActiveAccount);
+            dataImages = await getPhotos(usersActiveAccount);
+            console.log(dataImages);
         });
     });
-    
+
     req.on('error', (e) => {
         console.log(`Houve um erro: ${e.message}`);
     });
-    
+
     // aqui podes enviar data no POST
     // req.write(postData);
     req.end();
@@ -82,6 +82,7 @@ async function getPhotos(usersActiveAccount) {
         let imgList = await page.evaluate(() => {
             // funcao executada no browser
 
+            let imgs = [];
 
             //pegar as imagens
             const nodeList = document.querySelectorAll('article img');
@@ -93,7 +94,11 @@ async function getPhotos(usersActiveAccount) {
                 src
             }));
 
-            return list;
+            for (let i = 0; i < list.length; i++) {
+                imgs.push(list[i].src);
+            }
+
+            return imgs;
         });
 
         usersImages.push({
@@ -101,14 +106,13 @@ async function getPhotos(usersActiveAccount) {
             images: imgList
         });
 
-        
     }
 
     if (usersImages != null && usersImages != undefined && usersImages.length > 0) {
         errorMessage = '';
         isValid = true;
     }
-    
+
     //fechar navegador
     await browser.close();
 
