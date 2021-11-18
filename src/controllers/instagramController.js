@@ -5,53 +5,62 @@ exports.get = async (req, resp, next) => {
 
     let errorMessage = "Erro ao coletar os dados.";
     let isValid = false;
+    let account = req.params.account;
+
+    dataImages = await getPhotos(account);
+    
+    if (dataImages !== null && dataImages !== undefined && dataImages !== [] && dataImages.length > 0) {
+        errorMessage = '';
+        isValid = true;
+    }
 
     // let dataImages = [];
 
-    var options = {
-        hostname: 'localhost',
-        port: 8080,
-        path: '/tatuadores/conexao/instagram',
-        method: 'GET', // <--- aqui podes escolher o método
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
-    };
+    // var options = {
+    //     hostname: 'localhost',
+    //     port: 8080,
+    //     path: '/tatuadores/conexao/instagram',
+    //     method: 'GET', // <--- aqui podes escolher o método
+    //     headers: {
+    //         'Content-Type': 'application/x-www-form-urlencoded',
+    //     }
+    // };
 
-    var req = http.request(options, (res) => {
-        res.setEncoding('utf8');
-        let usersActiveAccount = [];
-        res.on('data', d => usersActiveAccount = JSON.parse(d));
-        res.on('end', async () => {
-            // console.log(usersActiveAccount.reverse());
-            dataImages = await getPhotos(usersActiveAccount);
-            console.log(dataImages);
-        });
-    });
+    // var req = http.request(options, (res) => {
+    //     res.setEncoding('utf8');
+    //     let usersActiveAccount = [];
+    //     res.on('data', d => usersActiveAccount = JSON.parse(d));
+    //     res.on('end', async () => {
+    //         // console.log(usersActiveAccount.reverse());
+    //         dataImages = await getPhotos(usersActiveAccount);
+    //         console.log(dataImages);
+    //     });
+    // });
 
-    req.on('error', (e) => {
-        console.log(`Houve um erro: ${e.message}`);
-    });
+    // req.on('error', (e) => {
+    //     console.log(`Houve um erro: ${e.message}`);
+    // });
 
-    // aqui podes enviar data no POST
-    // req.write(postData);
-    req.end();
+    // // aqui podes enviar data no POST
+    // // req.write(postData);
+    // req.end();
 
     //envia resposta
     resp.send({
-        "Message": errorMessage,
+        "ErrorMessage": errorMessage,
         "IsValid": isValid,
+        "Data": dataImages
     });
 };
 
-async function getPhotos(usersActiveAccount) {
+async function getPhotos(account) {
 
     let instagramAccount = {
-        username: 'alexandre_sgjr',
-        password: 'xandy_bya'
+        username: 'ink4YouApi',
+        password: 'KatchupRaines'
     }
 
-    let usersImages = [];
+    // let usersImages = [];
 
     const puppeteer = require('puppeteer');
 
@@ -73,50 +82,62 @@ async function getPhotos(usersActiveAccount) {
     await page.close();
     page = await browser.newPage();
 
-    for (let i = 0; i < usersActiveAccount.length; i++) {
-        let account = usersActiveAccount[i];
-        await page.goto(`https://www.instagram.com/${account}/`);
+    await page.goto(`https://www.instagram.com/${account}/`);
 
-        await autoScroll(page);
+    await page.waitForSelector('article');
 
-        let imgList = await page.evaluate(() => {
-            // funcao executada no browser
+    await autoScroll(page);
 
-            let imgs = [];
+    let imgList = await page.evaluate(() => {
+        // funcao executada no browser
 
-            //pegar as imagens
-            const nodeList = document.querySelectorAll('article img');
-            // passar nodeList para array
-            const imgArray = [...nodeList];
+        let imgs = [];
 
-            //transformar os elementos em objetos js
-            const list = imgArray.map(({ src }) => ({
-                src
-            }));
+        //pegar as imagens
+        const nodeList = document.querySelectorAll('article img');
+        // passar nodeList para array
+        const imgArray = [...nodeList];
 
-            for (let i = 0; i < list.length; i++) {
-                imgs.push(list[i].src);
-            }
+        //transformar os elementos em objetos js
+        const list = imgArray.map(({ src }) => ({
+            src
+        }));
 
-            return imgs;
-        });
+        for (let i = 0; i < list.length; i++) {
+            imgs.push(list[i].src);
+        }
 
-        usersImages.push({
-            user: account,
-            images: imgList
-        });
+        let btn = document.querySelector('span._2dbep.qNELH');
+        btn.click();
 
-    }
+        let logout = document.querySelectorAll('div.-qQT3')[1];
+        logout.click();
 
-    if (usersImages != null && usersImages != undefined && usersImages.length > 0) {
-        errorMessage = '';
-        isValid = true;
-    }
+        return imgs;
+    });
+
+    // await page.waitForSelector('span._2dbep.qNELH');
+    // await page.click('span._2dbep.qNELH');
+
+    // for (let i = 0; i < usersActiveAccount.length; i++) {
+    //     let account = usersActiveAccount[i];
+
+    //     usersImages.push({
+    //         user: account,
+    //         images: imgList
+    //     });
+
+    // }
+
+    // if (usersImages != null && usersImages != undefined && usersImages.length > 0) {
+    //     errorMessage = '';
+    //     isValid = true;
+    // }
 
     //fechar navegador
     await browser.close();
 
-    return usersImages;
+    return imgList;
 }
 
 async function autoScroll(page) {
